@@ -872,24 +872,40 @@ FunctionDecl::BindArgs(SemaContext& sc)
         } else {
             Expr* init = var->init_rhs();
             if (init && sc.sema()->CheckExpr(init)) {
-                AutoErrorPos pos(init->pos());
-
-                assert(!typeinfo.is_varargs);
-                var->set_default_value(new DefaultArg());
-
-                cell val;
-                Type* type;
-                if (!init->EvalConst(&val, &type)) {
-                    error(var->pos(), 8);
-
-                    // Populate to avoid errors.
-                    val = 0;
-                    type = typeinfo.type;
+                // Allow global/static variables as default values for scalars.
+                VarDecl* global_sym = nullptr;
+                if (!var->type()->isReference()) {
+                    if (auto sym_expr = init->as<SymbolExpr>()) {
+                        if (auto sym_decl = sym_expr->decl()->as<VarDecl>()) {
+                            if (sym_decl->vclass() == sGLOBAL || sym_decl->vclass() == sSTATIC)
+                                global_sym = sym_decl;
+                        }
+                    }
                 }
-                var->default_value()->type = QualType(type);
-                var->default_value()->val = ke::Some(val);
 
-                matchtag(*var->type(), type, MATCHTAG_COERCE);
+                if (global_sym) {
+                    fill_arg_defvalue(sc.cc(), var);
+                    matchtag(*var->type(), *global_sym->type(), MATCHTAG_COERCE);
+                } else {
+                    AutoErrorPos pos(init->pos());
+
+                    assert(!typeinfo.is_varargs);
+                    var->set_default_value(new DefaultArg());
+
+                    cell val;
+                    Type* type;
+                    if (!init->EvalConst(&val, &type)) {
+                        error(var->pos(), 8);
+
+                        // Populate to avoid errors.
+                        val = 0;
+                        type = typeinfo.type;
+                    }
+                    var->default_value()->type = QualType(type);
+                    var->default_value()->val = ke::Some(val);
+
+                    matchtag(*var->type(), type, MATCHTAG_COERCE);
+                }
             }
         }
 

@@ -1405,6 +1405,8 @@ CodeGenerator::EmitDefaultArgExpr(DefaultArgExpr* expr)
     } else {
         if (arg->type()->isEnumStruct())
             EmitDefaultArray(expr, arg);
+        else if (arg->default_value()->sym)
+            __ emit(OP_LOAD_PRI, arg->default_value()->sym->label());
         else
             __ const_pri(arg->default_value()->val.get());
     }
