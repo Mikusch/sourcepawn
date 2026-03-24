@@ -874,11 +874,14 @@ FunctionDecl::BindArgs(SemaContext& sc)
             if (init && sc.sema()->CheckExpr(init)) {
                 // Allow global/static variables as default values for scalars.
                 VarDecl* global_sym = nullptr;
-                if (!var->type()->isReference()) {
-                    if (auto sym_expr = init->as<SymbolExpr>()) {
-                        if (auto sym_decl = sym_expr->decl()->as<VarDecl>()) {
-                            if (sym_decl->vclass() == sGLOBAL || sym_decl->vclass() == sSTATIC)
+                if (auto sym_expr = init->as<SymbolExpr>()) {
+                    if (auto sym_decl = sym_expr->decl()->as<VarDecl>()) {
+                        if (sym_decl->vclass() == sGLOBAL || sym_decl->vclass() == sSTATIC) {
+                            if (var->type()->isReference()) {
+                                report(init->pos(), 466);
+                            } else {
                                 global_sym = sym_decl;
+                            }
                         }
                     }
                 }
